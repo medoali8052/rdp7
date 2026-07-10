@@ -1,0 +1,33 @@
+name: Test My Custom Batch File
+
+on:
+  workflow_dispatch: # يتيح لكِ تشغيل الاختبار يدوياً بضغطة زر
+
+jobs:
+  test-batch:
+    runs-on: windows-latest # جيت هوب سيفتح لنا جهاز ويندوز نظيف تماماً
+    
+    steps:
+      # 1. هذه الخطوة تقوم بنسخ ملفات مستودعك (بما فيها ملف الـ .bat) داخل سيرفر جيت هوب
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. تشغيل ملف الباتش واختباره داخل سيرفر جيت هوب
+      - name: Run and Test Batch File
+        shell: cmd
+        run: |
+          :: هنا نقوم باستدعاء وتشغيل ملف الباتش الخاص بكِ (تأكدي من مطابقة الاسم)
+          call setup.bat
+
+      # 3. نترك السيرفر حياً لمدة 10 دقائق فقط لتتأكدي من ظهوره في حسابك
+      - name: Wait and Check Tailscale Dashboard
+        shell: powershell
+        run: |
+          Write-Host "==========================================================" -ForegroundColor Green
+          Write-Host "ملف الباتش تم تشغيله بنجاح الآن!" -ForegroundColor Green
+          Write-Host "افتحي لوحة تحكم موقع Tailscale الآن وراقبي ظهور الجهاز الجديد." -ForegroundColor Yellow
+          Write-Host "السيرفر سيظل حياً لمدة 10 دقائق لتتمكني من الفحص ثم سيغلق تلقائياً." -ForegroundColor Yellow
+          Write-Host "==========================================================" -ForegroundColor Green
+          
+          # الانتظار لمدة 10 دقائق (600 ثانية)
+          Start-Sleep -Seconds 600
