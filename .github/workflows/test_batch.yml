@@ -1,4 +1,4 @@
-name: Free Kali Linux RDP via Tailscale
+name: Free Real Kali Linux RDP via Tailscale
 
 on:
   workflow_dispatch:
@@ -9,53 +9,62 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      # 1. تحديث النظام وتثبيت أدوات كالي والواجهة الرسومية وخادم RDP
-      - name: Install Kali Tools, Desktop Environment and XRDP
+      # 1. تحويل النظام رسميًا إلى مستودعات كالي لينكس وتثبيت الثيم والواجهة الأصلية
+      - name: Transform to Official Kali Linux and Setup Desktop
         run: |
           sudo apt-get update
+          sudo apt-get install -y gnupg wget
           
-          # تثبيت الواجهة الرسومية الخفيفة (XFCE) وخادم الـ RDP صامتاً
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y xfce4 xfce4-goodies xrdp
+          # إضافة مفتاح ومستودعات كالي لينكس الرسمية (Kali Repositories)
+          wget -q -O - https://archive.kali.org/archive-key.asc | sudo apt-key add -
+          echo "deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware" | sudo tee /etc/apt/sources.list
           
-          # إعداد نظام التشغيل الافتراضي ليكون واجهة XFCE عند الاتصال بالـ RDP
+          # تحديث الحزم لقراءة مستودع كالي الجديد
+          sudo apt-get update
+          
+          # تثبيت واجهة كالي الرسمية وثيمات التنين صامتاً (Kali Desktop Environment)
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y kali-desktop-xfce xrdp
+          
+          # إعداد الجلسة الافتراضية للـ RDP
           echo xfce4-session > ~/.xsession
           
-          # تشغيل وتفعيل خدمة الـ RDP
+          # تفعيل وتشغيل خادم الـ RDP
           sudo systemctl enable xrdp
           sudo systemctl start xrdp
-          
-          # إضافة أدوات كالي لينكس الأساسية للشبكات والفحص
-          sudo apt-get install -y curl wget git net-tools nmap
 
-      # 2. تثبيت أداة Tailscale الرسمية لنظام اللينكس
+      # 2. تثبيت الحزمة الأساسية لأدوات كالي لينكس (Kali Linux Core Tools)
+      - name: Install Kali Linux Core Tools
+        run: |
+          # تثبيت الأدوات الرئيسية لكالي (تستغرق دقائق قليلة لضمان استقرار السيرفر)
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y kali-tools-top10
+
+      # 3. تثبيت أداة Tailscale
       - name: Install Tailscale
         run: |
           curl -fsSL https://tailscale.com/install.sh | sh
 
-      # 3. الربط بالشبكة وتفعيل الحساب (تم حذف --unattended هنا)
+      # 4. الربط بشبكة تايل سكيل
       - name: Connect to Tailscale Network
         env:
           TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
         run: |
-          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --accept-routes --hostname=Kali-GitHub-Server
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --accept-routes --hostname=Real-Kali-Server
 
-      # 4. تعيين كلمة مرور لمستخدم السيرفر لتتمكن من تسجيل الدخول بها عبر الـ RDP
-      - name: Setup Linux User Password
+      # 5. تعيين كلمة مرور مستخدم الـ RDP
+      - name: Setup User Password
         run: |
-          # اسم المستخدم الافتراضي في جيت هوب لينكس هو 'runner'
           echo "runner:KaliRDP@2026" | sudo chpasswd
 
-      # 5. الحفاظ على تشغيل السيرفر حياً طوال الـ 6 ساعات
+      # 6. الحفاظ على تشغيل السيرفر حياً
       - name: Keep Alive Loop
         run: |
           echo "=========================================================="
-          echo "Kali Linux is running and connected to Tailscale!"
-          echo "Use your Tailscale IP to connect via Remote Desktop (RDP)."
+          echo "Real Kali Linux is running with official theme!"
+          echo "Connect via Remote Desktop (RDP) using Tailscale IP."
           echo "Username: runner"
           echo "Password: KaliRDP@2026"
           echo "=========================================================="
           
-          # حلقة الحفاظ على التشغيل حياً (6 ساعات)
           hours=6
           for ((i=0; i<(hours*60); i++)); do
               sleep 60
