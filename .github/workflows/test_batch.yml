@@ -1,33 +1,64 @@
-name: Test My Custom Batch File
+name: Free Kali Linux RDP via Tailscale
 
 on:
-  workflow_dispatch: # يتيح لكِ تشغيل الاختبار يدوياً بضغطة زر
+  workflow_dispatch:
 
 jobs:
-  test-batch:
-    runs-on: windows-latest # جيت هوب سيفتح لنا جهاز ويندوز نظيف تماماً
-    
+  build:
+    runs-on: ubuntu-latest # تغيير البيئة إلى لينكس
+    timeout-minutes: 360
+
     steps:
-      # 1. هذه الخطوة تقوم بنسخ ملفات مستودعك (بما فيها ملف الـ .bat) داخل سيرفر جيت هوب
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      # 2. تشغيل ملف الباتش واختباره داخل سيرفر جيت هوب
-      - name: Run and Test Batch File
-        shell: cmd
+      # 1. تحديث النظام وتثبيت أدوات كالي والواجهة الرسومية وخادم RDP
+      - name: Install Kali Tools, Desktop Environment and XRDP
         run: |
-          :: هنا نقوم باستدعاء وتشغيل ملف الباتش الخاص بكِ (تأكدي من مطابقة الاسم)
-          call setup.bat
-
-      # 3. نترك السيرفر حياً لمدة 10 دقائق فقط لتتأكدي من ظهوره في حسابك
-      - name: Wait and Check Tailscale Dashboard
-        shell: powershell
-        run: |
-          Write-Host "==========================================================" -ForegroundColor Green
-          Write-Host "ملف الباتش تم تشغيله بنجاح الآن!" -ForegroundColor Green
-          Write-Host "افتحي لوحة تحكم موقع Tailscale الآن وراقبي ظهور الجهاز الجديد." -ForegroundColor Yellow
-          Write-Host "السيرفر سيظل حياً لمدة 10 دقائق لتتمكني من الفحص ثم سيغلق تلقائياً." -ForegroundColor Yellow
-          Write-Host "==========================================================" -ForegroundColor Green
+          sudo apt-get update
           
-          # الانتظار لمدة 10 دقائق (600 ثانية)
-          Start-Sleep -Seconds 600
+          # تثبيت الواجهة الرسومية الخفيفة (XFCE) وخادم الـ RDP صامتاً
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y xfce4 xfce4-goodies xrdp
+          
+          # إعداد نظام التشغيل الافتراضي ليكون واجهة XFCE عند الاتصال بالـ RDP
+          echo xfce4-session > ~/.xsession
+          
+          # تشغيل وتفعيل خدمة الـ RDP
+          sudo systemctl enable xrdp
+          sudo systemctl start xrdp
+          
+          # (اختياري) إضافة مستودعات وأدوات كالي لينكس الأساسية للشبكات والفحص
+          sudo apt-get install -y curl wget git net-tools nmap
+
+      # 2. تثبيت أداة Tailscale الرسمية لنظام اللينكس
+      - name: Install Tailscale
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+
+      # 3. الربط بالشبكة وتفعيل الحساب
+      - name: Connect to Tailscale Network
+        env:
+          TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
+        run: |
+          # تشغيل تايل سكيل وربطه تلقائياً مع تفعيل توجيه المسارات والمحافظة على استمرارية الخدمة
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --accept-routes --unattended --hostname=Kali-GitHub-Server
+
+      # 4. تعيين كلمة مرور لمستخدم السيرفر لتتمكن من تسجيل الدخول بها عبر الـ RDP
+      - name: Setup Linux User Password
+        run: |
+          # اسم المستخدم الافتراضي في جيت هوب لينكس هو 'runner'
+          # هنا نقوم بتغيير كلمة المرور الخاصة به إلى KaliRDP@2026
+          echo "runner:KaliRDP@2026" | sudo chpasswd
+
+      # 5. الحفاظ على تشغيل السيرفر حياً طوال الـ 6 ساعات
+      - name: Keep Alive Loop
+        run: |
+          echo "=========================================================="
+          echo "Kali Linux is running and connected to Tailscale!"
+          echo "Use your Tailscale IP to connect via Remote Desktop (RDP)."
+          echo "Username: runner"
+          echo "Password: KaliRDP@2026"
+          echo "=========================================================="
+          
+          # حلقة الحفاظ على التشغيل حياً (6 ساعات)
+          hours=6
+          for ((i=0; i<(hours*60); i++)); do
+              sleep 60
+          done
