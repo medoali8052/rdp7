@@ -1,4 +1,4 @@
-name: Free Real Kali Linux RDP via Tailscale
+name: Free Real Kali Linux RDP v2
 
 on:
   workflow_dispatch:
@@ -9,34 +9,30 @@ jobs:
     timeout-minutes: 360
 
     steps:
-      # 1. تحويل النظام رسميًا إلى مستودعات كالي لينكس وتثبيت الثيم والواجهة الأصلية
-      - name: Transform to Official Kali Linux and Setup Desktop
+      # 1. تحويل النظام إلى مستودعات كالي وتثبيت الواجهة بشكل مخفف وسريع
+      - name: Transform to Kali Linux (Light Mode)
         run: |
           sudo apt-get update
           sudo apt-get install -y gnupg wget
           
-          # إضافة مفتاح ومستودعات كالي لينكس الرسمية (Kali Repositories)
+          # إضافة مستودعات كالي الرسمية
           wget -q -O - https://archive.kali.org/archive-key.asc | sudo apt-key add -
           echo "deb http://http.kali.org/kali kali-rolling main contrib non-free non-free-firmware" | sudo tee /etc/apt/sources.list
           
-          # تحديث الحزم لقراءة مستودع كالي الجديد
           sudo apt-get update
           
-          # تثبيت واجهة كالي الرسمية وثيمات التنين صامتاً (Kali Desktop Environment)
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y kali-desktop-xfce xrdp
+          # تثبيت الواجهة والخادم مع خيار منع تحميل الحزم غير الضرورية لتسريع العملية ومنع الكراش
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xfce4 xfce4-goodies xrdp kali-themes kali-defaults
           
-          # إعداد الجلسة الافتراضية للـ RDP
+          # إعداد الجلسة وتشغيل الـ RDP
           echo xfce4-session > ~/.xsession
-          
-          # تفعيل وتشغيل خادم الـ RDP
           sudo systemctl enable xrdp
           sudo systemctl start xrdp
 
-      # 2. تثبيت الحزمة الأساسية لأدوات كالي لينكس (Kali Linux Core Tools)
-      - name: Install Kali Linux Core Tools
+      # 2. تثبيت الحزم الأساسية للاختراق (أهم 10 أدوات فقط بدلاً من التوزيعة كاملة)
+      - name: Install Essential Kali Tools
         run: |
-          # تثبيت الأدوات الرئيسية لكالي (تستغرق دقائق قليلة لضمان استقرار السيرفر)
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y kali-tools-top10
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nmap curl wget git net-tools
 
       # 3. تثبيت أداة Tailscale
       - name: Install Tailscale
@@ -48,7 +44,7 @@ jobs:
         env:
           TAILSCALE_AUTH_KEY: ${{ secrets.TAILSCALE_AUTH_KEY }}
         run: |
-          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --accept-routes --hostname=Real-Kali-Server
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --accept-routes --hostname=Kali-Light-Server
 
       # 5. تعيين كلمة مرور مستخدم الـ RDP
       - name: Setup User Password
@@ -59,8 +55,8 @@ jobs:
       - name: Keep Alive Loop
         run: |
           echo "=========================================================="
-          echo "Real Kali Linux is running with official theme!"
-          echo "Connect via Remote Desktop (RDP) using Tailscale IP."
+          echo "Kali Linux Light is ready!"
+          echo "Connect via RDP using Tailscale IP."
           echo "Username: runner"
           echo "Password: KaliRDP@2026"
           echo "=========================================================="
